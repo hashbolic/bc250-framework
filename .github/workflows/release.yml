@@ -1,0 +1,111 @@
+name: release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  tag:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate and create version tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(cat VERSION)"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          tag="v$version"
+
+          bash -n bc setup.sh cu-test.sh game.sh reset.sh lib/*.sh
+          python3 -m py_compile helpers/*.py
+
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
+            echo "$tag already exists; no new release tag required."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$tag" "$GITHUB_SHA"
+          git push origin "$tag"
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          test "$(cat VERSION)" = "$version"
+          bash -n bc setup.sh cu-test.sh game.sh reset.sh lib/*.sh
+          python3 -m py_compile helpers/*.py
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Build release archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod 0755 bc setup.sh cu-test.sh game.sh reset.sh lib/*.sh helpers/*.py
+          tar --zstd -cf bc250-framework.tar.zst \
+            VERSION bc setup.sh cu-test.sh game.sh reset.sh lib helpers
+          sha="$(sha256sum bc250-framework.tar.zst | awk '{print $1}')"
+          version="$(cat VERSION)"
+          python3 - "$version" "$sha" <<'PY'
+          import json, sys
+          version, sha = sys.argv[1:]
+          with open("manifest.json", "w", encoding="utf-8") as f:
+              json.dump({
+                  "schema_version": 1,
+                  "version": version,
+                  "sha256": sha,
+                  "asset": "bc250-framework.tar.zst"
+              }, f, indent=2)
+              f.write("\n")
+          PY
+
+      - name: Sign release archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cosign sign-blob --yes \
+            --bundle bc250-framework.cosign.bundle \
+            bc250-framework.tar.zst
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          assets=(
+            bc250-framework.tar.zst
+            bc250-framework.cosign.bundle
+            manifest.json
+          )
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --title "BC250 Framework $GITHUB_REF_NAME" \
+              --generate-notes \
+              "${assets[@]}"
+          fi
