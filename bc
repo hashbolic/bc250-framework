@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+BUNDLED_ROOT="/usr/share/bc250-framework/bootstrap"
+INSTALLED_ROOT="/var/lib/bc250-framework/current"
+
+die(){ echo "bc: $*" >&2; exit 1; }
+
+framework_root(){
+  if [[ -n "${BC250_FRAMEWORK_ROOT:-}" && -d "$BC250_FRAMEWORK_ROOT" ]]; then
+    printf '%s\n' "$BC250_FRAMEWORK_ROOT"
+  elif [[ -d "$INSTALLED_ROOT" && -x "$INSTALLED_ROOT/setup.sh" ]]; then
+    printf '%s\n' "$INSTALLED_ROOT"
+  elif [[ -d "$BUNDLED_ROOT" && -x "$BUNDLED_ROOT/setup.sh" ]]; then
+    printf '%s\n' "$BUNDLED_ROOT"
+  else
+    die "BC250 Framework payload is missing."
+  fi
+}
+
+ROOT="$(framework_root)"
+
+version(){
+  [[ -r "$ROOT/VERSION" ]] && cat "$ROOT/VERSION" || echo "bundled"
+}
+
+usage(){
+  cat <<'EOF'
+BC250 Framework
+
+Usage:
+  bc setup             configure a new BC250 console
+  bc status            verify the current setup
+  bc cu-test           interactive CU/WGP qualification with FurMark
+  bc game ...          manage tested per-game BC250 profiles
+  bc reset             reset BC250 Framework provisioning on this OS image
+  bc reset --clean     also invoke Bazzite rpm-ostree/Steam reset helpers
+  bc update            update BC250 Framework from the public release channel
+  bc rollback          switch back to the previous framework release
+  bc version           show the active framework version
+  bc help              show this help
+
+Production intentionally has no numbered engineering commands.
+EOF
+}
+
+case "${1:-help}" in
+  setup) shift; exec bash "$ROOT/setup.sh" "$@" ;;
+  status) exec bash "$ROOT/setup.sh" --check ;;
+  cu-test) shift; exec bash "$ROOT/cu-test.sh" "$@" ;;
+  game) shift; exec bash "$ROOT/game.sh" "$@" ;;
+  reset) shift; exec bash "$ROOT/reset.sh" "$@" ;;
+  update) shift; exec bash "$ROOT/lib/update.sh" update "$@" ;;
+  rollback) shift; exec bash "$ROOT/lib/update.sh" rollback "$@" ;;
+  version) version ;;
+  help|-h|--help|'') usage ;;
+  *) die "unknown production command: $1 (run: bc help)" ;;
+esac
