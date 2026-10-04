@@ -13,13 +13,13 @@ permissions:
   id-token: write
 
 jobs:
-  tag:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate and create version tag
+      - name: Prepare release
+        id: prep
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -27,40 +27,48 @@ jobs:
           set -euo pipefail
           version="$(cat VERSION)"
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          tag="v$version"
 
           bash -n bc setup.sh cu-test.sh game.sh reset.sh lib/*.sh
           python3 -m py_compile helpers/*.py
 
-          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
-            echo "$tag already exists; no new release tag required."
-            exit 0
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            tag="$GITHUB_REF_NAME"
+            test "$tag" = "v$version"
+          else
+            tag="v$version"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+            existing="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '.object.sha' 2>/dev/null || true)"
+            if [[ -z "$existing" ]]; then
+              git tag "$tag" "$GITHUB_SHA"
+              git push origin "$tag"
+            elif [[ "$existing" != "$GITHUB_SHA" ]]; then
+              # Safe only before a release exists: move an unpublished tag to
+              # the exact commit whose runtime is being signed and published.
+              if gh release view "$tag" >/dev/null 2>&1; then
+                echo "Release $tag already exists; refusing to move its tag." >&2
+                exit 1
+              fi
+              git tag -f "$tag" "$GITHUB_SHA"
+              git push --force origin "$tag"
+            fi
           fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "$tag" "$GITHUB_SHA"
-          git push origin "$tag"
-
-  release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Validate version
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
-          test "$(cat VERSION)" = "$version"
-          bash -n bc setup.sh cu-test.sh game.sh reset.sh lib/*.sh
-          python3 -m py_compile helpers/*.py
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "release_exists=true" >> "$GITHUB_OUTPUT"
+            echo "$tag is already published."
+          else
+            echo "release_exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install cosign
+        if: steps.prep.outputs.release_exists != 'true'
         uses: sigstore/cosign-installer@v3
 
       - name: Build release archive
+        if: steps.prep.outputs.release_exists != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -83,6 +91,7 @@ jobs:
           PY
 
       - name: Sign release archive
+        if: steps.prep.outputs.release_exists != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -91,21 +100,17 @@ jobs:
             bc250-framework.tar.zst
 
       - name: Publish GitHub release
+        if: steps.prep.outputs.release_exists != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.prep.outputs.tag }}
         shell: bash
         run: |
           set -euo pipefail
-          assets=(
-            bc250-framework.tar.zst
-            bc250-framework.cosign.bundle
+          gh release create "$TAG" \
+            --verify-tag \
+            --title "BC250 Framework $TAG" \
+            --generate-notes \
+            bc250-framework.tar.zst \
+            bc250-framework.cosign.bundle \
             manifest.json
-          )
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
-          else
-            gh release create "$GITHUB_REF_NAME" \
-              --title "BC250 Framework $GITHUB_REF_NAME" \
-              --generate-notes \
-              "${assets[@]}"
-          fi
