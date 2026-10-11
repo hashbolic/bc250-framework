@@ -5,8 +5,11 @@ on:
     paths:
       - 'bc'
       - 'lib/fsr4-bench.sh'
+      - 'lib/fsr4-research.sh'
       - 'helpers/fsr4_bench_report.py'
+      - 'helpers/fsr4_lutris.py'
       - 'tests/test_fsr4_bench.py'
+      - 'tests/test_fsr4_lutris.py'
       - 'docs/FSR4_AB_C_BENCHMARK.md'
       - '.github/workflows/research-fsr4.yml'
   workflow_dispatch:
@@ -20,8 +23,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Shell syntax
-        run: bash -n bc lib/fsr4-bench.sh
+        run: bash -n bc lib/fsr4-bench.sh lib/fsr4-research.sh
       - name: Python syntax
-        run: python3 -m py_compile helpers/fsr4_bench_report.py
+        run: python3 -m py_compile helpers/fsr4_bench_report.py helpers/fsr4_lutris.py
       - name: Offline benchmark parser tests
-        run: python3 -m unittest discover -s tests -p 'test_fsr4_bench.py' -v
+        run: python3 -m unittest discover -s tests -p 'test_fsr4_*.py' -v
