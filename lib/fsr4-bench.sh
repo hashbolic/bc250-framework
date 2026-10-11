@@ -46,8 +46,15 @@ launch(){
   (($#)) || die "No game command given"
   [[ "$(id -u)" -ne 0 ]] || die "Run as desktop user, not root"
   case "$mode" in default|cyboman|v3) ;; *) die "Mode must be default, cyboman or v3";; esac
-  # Prohibit accidental combined mode, even with inherited environment.
+  # The existing BC250 async driver may already be selected by Vulkan ICD env.
+  # Preserve that BASELINE for both default and cyboman; only V3 replaces it.
+  local base_icd="${BC250_FSR4_BASE_ICD:-${VK_DRIVER_FILES:-}}"
+  local base_legacy_icd="${VK_ICD_FILENAMES:-}"
   unset VKD3D_SHADER_OVERRIDE VK_DRIVER_FILES VK_ICD_FILENAMES VK_ADD_DRIVER_FILES
+  if [[ "$mode" != v3 ]]; then
+    [[ -z "$base_icd" ]] || export VK_DRIVER_FILES="$base_icd"
+    [[ -n "$base_icd" || -z "$base_legacy_icd" ]] || export VK_ICD_FILENAMES="$base_legacy_icd"
+  fi
   case "$mode" in
     cyboman) check_exact; export VKD3D_SHADER_OVERRIDE="Z:$EXACT" ;;
     v3) check_v3; export VK_DRIVER_FILES="$ICD" ;;
