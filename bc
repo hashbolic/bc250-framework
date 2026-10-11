@@ -33,6 +33,7 @@ Usage:
   bc status            verify the current setup
   bc cu-test           interactive CU/WGP qualification with FurMark
   bc game ...          manage tested per-game BC250 profiles
+  bc fsr4 ...          experimental 3-way FSR4 game benchmark (no global modifications)
   bc reset             reset BC250 Framework provisioning on this OS image
   bc reset --clean     also invoke Bazzite rpm-ostree/Steam reset helpers
   bc update            update BC250 Framework from the public release channel
@@ -49,6 +50,7 @@ case "${1:-help}" in
   status) exec bash "$ROOT/setup.sh" --check ;;
   cu-test) shift; exec bash "$ROOT/cu-test.sh" "$@" ;;
   game) shift; exec bash "$ROOT/game.sh" "$@" ;;
+  fsr4) shift; exec bash "$ROOT/lib/fsr4-bench.sh" "$@" ;;
   reset) shift; exec bash "$ROOT/reset.sh" "$@" ;;
   update) shift; exec bash "$ROOT/lib/update.sh" update "$@" ;;
   rollback) shift; exec bash "$ROOT/lib/update.sh" rollback "$@" ;;
