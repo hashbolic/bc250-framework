@@ -68,8 +68,18 @@ For V3:
 
     BC250_FSR4_V3_ICD=/home/YOU/.local/share/bc250-fsr4/v3/radv-bc250-fsr4-v3.json bash /home/YOU/bc250-fsr4-lab/lib/fsr4-bench.sh launch v3 -- %command%
 
-For Lutris, use equivalent per-game environment and MangoHud capture.
-Do NOT assume Lutris has the same launch-option syntax as Steam.
+For Lutris (our Cyberpunk installation), enable Advanced options in the game config,
+then System options > Command prefix. Give the prefix **without** Steam's %command%:
+
+    bash /home/YOU/bc250-fsr4-lab/lib/fsr4-bench.sh launch default --
+
+For cyboman or V3, replace the word default with cyboman or v3, and
+in that game's System options > Environment variables set respectively:
+BC250_FSR4_CYBOMAN_DIR=/home/YOU/fsr4-exact-overrides
+or BC250_FSR4_V3_ICD=/home/YOU/.../radv-bc250-fsr4-v3.json.
+Lutris should append its existing Wine/umu game command after this prefix.
+Keep protonge-latest-bc250 as the runner for all tests. Remove the prefix
+after testing. This Lutris prefix path is proposed but not hardware-tested.
 
 ## Test protocol
 
