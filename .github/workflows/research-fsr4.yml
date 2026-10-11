@@ -8,6 +8,7 @@ on:
       - 'lib/fsr4-research.sh'
       - 'helpers/fsr4_bench_report.py'
       - 'helpers/fsr4_lutris.py'
+      - 'helpers/fsr4_doctor.py'
       - 'tests/test_fsr4_bench.py'
       - 'tests/test_fsr4_lutris.py'
       - 'docs/FSR4_AB_C_BENCHMARK.md'
@@ -25,6 +26,6 @@ jobs:
       - name: Shell syntax
         run: bash -n bc lib/fsr4-bench.sh lib/fsr4-research.sh
       - name: Python syntax
-        run: python3 -m py_compile helpers/fsr4_bench_report.py helpers/fsr4_lutris.py
+        run: python3 -m py_compile helpers/fsr4_bench_report.py helpers/fsr4_lutris.py helpers/fsr4_doctor.py
       - name: Offline benchmark parser tests
         run: python3 -m unittest discover -s tests -p 'test_fsr4_*.py' -v
