@@ -50,10 +50,12 @@ launch(){
   # Preserve that BASELINE for both default and cyboman; only V3 replaces it.
   local base_icd="${BC250_FSR4_BASE_ICD:-${VK_DRIVER_FILES:-}}"
   local base_legacy_icd="${VK_ICD_FILENAMES:-}"
+  local base_added_icd="${VK_ADD_DRIVER_FILES:-}"
   unset VKD3D_SHADER_OVERRIDE VK_DRIVER_FILES VK_ICD_FILENAMES VK_ADD_DRIVER_FILES
   if [[ "$mode" != v3 ]]; then
     [[ -z "$base_icd" ]] || export VK_DRIVER_FILES="$base_icd"
     [[ -n "$base_icd" || -z "$base_legacy_icd" ]] || export VK_ICD_FILENAMES="$base_legacy_icd"
+    [[ -z "$base_added_icd" ]] || export VK_ADD_DRIVER_FILES="$base_added_icd"
   fi
   case "$mode" in
     cyboman) check_exact; export VKD3D_SHADER_OVERRIDE="Z:$EXACT" ;;
