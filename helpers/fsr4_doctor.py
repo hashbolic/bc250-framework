@@ -131,12 +131,13 @@ def main():
             if label == "RC11":
                 exact = True
     if exact:
-        print("\nACTIVE RC11 DLL: CONFIRMED by exact mapped-file SHA256.")
+        print("\nRC11 DLL LOADED: CONFIRMED by mapped-file SHA256.")
+        print("FSR4 INT8 ACTUALLY USED: NOT YET VERIFIED (check OptiScaler overlay in gameplay).")
     elif seen:
-        print("\nACTIVE RC11 DLL: NOT CONFIRMED. Inspect mapped providers and OptiScaler overlay.")
+        print("\nRC11 DLL LOADED: NOT CONFIRMED. Inspect mapped providers and OptiScaler overlay.")
     else:
-        print("\nACTIVE RC11 DLL: UNVERIFIED. The game can load DLLs through another helper process.")
-    print("Only mapped RC11 DLL SHA256 proves the exact release binary; fsr411f alone does not.")
+        print("\nRC11 DLL LOADED: UNVERIFIED. The game can load DLLs through another helper process.")
+    print("A mapped RC11 DLL verifies loading, not necessarily active FSR4 dispatch; fsr411f alone proves neither.")
     print("OptiScaler overlay: version 4.1.1r11, source LOCAL, and model INT8 must be checked.")
 
 
