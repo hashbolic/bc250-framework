@@ -1,0 +1,27 @@
+name: research-fsr4-static-tests
+
+on:
+  pull_request:
+    paths:
+      - 'bc'
+      - 'lib/fsr4-bench.sh'
+      - 'helpers/fsr4_bench_report.py'
+      - 'tests/test_fsr4_bench.py'
+      - 'docs/FSR4_AB_C_BENCHMARK.md'
+      - '.github/workflows/research-fsr4.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: bash -n bc lib/fsr4-bench.sh
+      - name: Python syntax
+        run: python3 -m py_compile helpers/fsr4_bench_report.py
+      - name: Offline benchmark parser tests
+        run: python3 -m unittest discover -s tests -p 'test_fsr4_bench.py' -v
